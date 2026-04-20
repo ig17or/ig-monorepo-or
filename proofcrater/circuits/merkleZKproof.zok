@@ -1,0 +1,29 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import "hashes/poseidon/poseidon" as poseidon;
+
+def main(
+    field root, 
+    field nullifierHash,
+    field amount,
+    field recipientAddress,
+    private field secret,
+    private field nSeed,
+    private field[20] pathSiblings,
+    private bool[20] pathDirection
+) -> field {
+    field calculatedNullifier = poseidon([secret, nSeed]);
+    assert(calculatedNullifier == nullifierHash);
+
+    field commitment = poseidon([secret, nSeed, amount]);
+
+    field mut currentHash = commitment;
+    for u32 i in 0..20 {
+        field left = if pathDirection[i] { pathSiblings[i] } else { currentHash };
+        field right = if pathDirection[i] { currentHash } else { pathSiblings[i] };
+        currentHash = poseidon([left, right]);
+    }
+
+    assert(currentHash == root);
+    return poseidon([secret, recipientAddress]);
+}
